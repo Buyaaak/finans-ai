@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Finans AI — Kişisel Asistan</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Geist+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0c;
+  --bg2: #111114;
+  --bg3: #18181d;
+  --border: rgba(255,255,255,0.06);
+  --border2: rgba(255,255,255,0.10);
+  --border3: rgba(255,255,255,0.16);
+  --text: #eeeae3;
+  --text2: #7a7872;
+  --text3: #4a4845;
+  --green: #b8f567;
+  --green2: #7aac3a;
+  --red: #ff5c5c;
+  --blue: #5ca8ff;
+  --radius: 10px;
+}
+
+html, body { height: 100%; overflow: hidden; background: var(--bg); color: var(--text); font-family: 'Syne', sans-serif; }
+
+/* LAYOUT */
+.app { display: grid; grid-template-columns: 260px 1fr; grid-template-rows: 56px 1fr; height: 100vh; }
+
+/* TOPBAR */
+.topbar {
+  grid-column: 1 / -1;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg);
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand-mark {
+  width: 30px; height: 30px;
+  background: var(--green);
+  border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Geist Mono', monospace;
+  font-size: 11px; font-weight: 500;
+  color: #0a0a0c;
+}
+.brand-name { font-size: 15px; font-weight: 600; letter-spacing: -0.3px; }
+.topbar-right { display: flex; align-items: center; gap: 12px; }
+.api-input {
+  width: 280px; height: 32px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 7px;
+  padding: 0 12px;
+  font-family: 'Geist Mono', monospace;
+  font-size: 12px;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s;
+}
+.api-input:focus { border-color: var(--border3); }
+.api-input::placeholder { color: var(--text3); }
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  font-size: 12px;
+  font-family: 'Geist Mono', monospace;
+  color: var(--text2);
+}
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+/* SIDEBAR */
+.sidebar {
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  padding: 16px;
+  gap: 16px;
+  overflow-y: auto;
+  background: var(--bg);
+}
+.sidebar::-webkit-scrollbar { width: 3px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.section-label {
+  font-size: 10px;
+  font-family: 'Geist Mono', monospace;
+  color: var(--text3);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.mode-grid { display: flex; flex-direction: column; gap: 4px; }
+.mode-btn {
+  width: 100%; padding: 9px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text2);
+  font-family: 'Syne', sans-serif;
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s;
+  display: flex; align-items: center; gap: 8px;
+}
+.mode-btn:hover { border-color: var(--border2); color: var(--text); }
+.mode-btn.active { background: var(--bg3); border-color: var(--border3); color: var(--text); }
+.mode-icon { font-size: 14px; width: 18px; text-align: center; }
+
+.drop-zone {
+  border: 1.5px dashed var(--border2);
+  border-radius: 10px;
+  padding: 20px 12px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.drop-zone:hover, .drop-zone.over { border-color: var(--green2); background: rgba(184,245,103,0.03); }
+.drop-zone input { display: none; }
+.drop-icon { font-size: 20px; margin-bottom: 6px; display: block; color: var(--text3); }
+.drop-label { font-size: 12px; color: var(--text2); line-height: 1.6; }
+.drop-label strong { color: var(--green); font-weight: 500; }
+.drop-types { font-size: 10px; color: var(--text3); margin-top: 4px; font-family: 'Geist Mono', monospace; }
+
+.file-list { display: flex; flex-direction: column; gap: 5px; }
+.file-item {
+  display: flex; align-items: center; gap: 7px;
+  padding: 7px 9px;
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 12px;
+}
+.file-tag {
+  font-family: 'Geist Mono', monospace;
+  font-size: 9px; font-weight: 500;
+  padding: 2px 5px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  letter-spacing: 0.05em;
+}
+.file-tag.pdf { background: rgba(255,92,92,0.15); color: var(--red); border: 1px solid rgba(255,92,92,0.2); }
+.file-tag.xls { background: rgba(184,245,103,0.12); color: var(--green); border: 1px solid rgba(184,245,103,0.2); }
+.file-tag.csv { background: rgba(92,168,255,0.12); color: var(--blue); border: 1px solid rgba(92,168,255,0.2); }
+.file-nm { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text); }
+.file-rm { color: var(--text3); cursor: pointer; font-size: 13px; flex-shrink: 0; padding: 2px; transition: color 0.15s; }
+.file-rm:hover { color: var(--red); }
+
+/* CHAT */
+.chat { display: flex; flex-direction: column; overflow: hidden; background: var(--bg); }
+.messages { flex: 1; overflow-y: auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+.messages::-webkit-scrollbar { width: 3px; }
+.messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.welcome {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  flex: 1; text-align: center; padding: 40px; gap: 10px;
+  animation: fadeIn 0.4s ease;
+}
+.welcome-title { font-size: 26px; font-weight: 700; letter-spacing: -0.5px; color: var(--text); }
+.welcome-sub { font-size: 14px; color: var(--text2); max-width: 360px; line-height: 1.7; }
+.chips { display: flex; flex-wrap: wrap; gap: 7px; justify-content: center; margin-top: 14px; }
+.chip {
+  padding: 7px 14px;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 20px;
+  font-size: 12px;
+  cursor: pointer;
+  color: var(--text2);
+  transition: all 0.15s;
+  font-family: 'Geist Mono', monospace;
+}
+.chip:hover { border-color: var(--green2); color: var(--green); }
+
+@keyframes fadeIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+.msg { display: flex; gap: 10px; animation: fadeIn 0.25s ease; }
+.msg.user { flex-direction: row-reverse; align-self: flex-end; max-width: 75%; }
+.msg.ai { align-self: flex-start; max-width: 80%; }
+
+.av {
+  width: 28px; height: 28px; border-radius: 7px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 10px; font-family: 'Geist Mono', monospace; font-weight: 500;
+  flex-shrink: 0;
+}
+.msg.user .av { background: var(--bg3); color: var(--text2); border: 1px solid var(--border2); }
+.msg.ai .av { background: var(--green); color: #0a0a0c; }
+
+.bubble {
+  padding: 11px 15px;
+  border-radius: 11px;
+  font-size: 14px;
+  line-height: 1.7;
+  border: 1px solid var(--border);
+  background: var(--bg3);
+  color: var(--text);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.msg.user .bubble { background: var(--bg2); }
+
+.source-row { margin-top: 8px; display: flex; gap: 5px; flex-wrap: wrap; }
+.src-badge {
+  font-size: 10px; font-family: 'Geist Mono', monospace;
+  padding: 2px 7px; border-radius: 4px;
+}
+.src-badge.pdf { background: rgba(255,92,92,0.12); color: var(--red); border: 1px solid rgba(255,92,92,0.15); }
+.src-badge.web { background: rgba(92,168,255,0.12); color: var(--blue); border: 1px solid rgba(92,168,255,0.15); }
+
+.typing { display: flex; gap: 4px; padding: 4px 0; align-items: center; }
+.typing span {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--text3);
+  animation: bounce 1.2s infinite;
+}
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+@keyframes bounce { 0%,100%{opacity:0.3;transform:translateY(0)} 50%{opacity:1;transform:translateY(-4px)} }
+
+/* INPUT */
+.input-area {
+  padding: 16px 32px 20px;
+  border-top: 1px solid var(--border);
+  display: flex; gap: 10px; align-items: flex-end;
+}
+.input-wrap {
+  flex: 1;
+  background: var(--bg3);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+  padding: 11px 15px;
+  display: flex; align-items: flex-end; gap: 10px;
+  transition: border-color 0.2s;
+}
+.input-wrap:focus-within { border-color: var(--border3); }
+textarea {
+  flex: 1; background: transparent; border: none; outline: none;
+  color: var(--text); font-family: 'Syne', sans-serif; font-size: 14px;
+  resize: none; max-height: 130px; line-height: 1.5;
+}
+textarea::placeholder { color: var(--text3); }
+.send-btn {
+  width: 36px; height: 36px; flex-shrink: 0;
+  background: var(--green);
+  border: none; border-radius: 9px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+}
+.send-btn:hover { background: var(--green2); }
+.send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.send-btn svg { width: 15px; height: 15px; stroke: #0a0a0c; }
+
+/* SCROLLBAR */
+* { scrollbar-width: thin; scrollbar-color: var(--border) transparent; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark">₺</div>
+      <span class="brand-name">Finans AI</span>
+    </div>
+    <div class="topbar-right">
+      <input class="api-input" id="apiKey" type="password" placeholder="API key: sk-ant-api03-...">
+      <div class="status-pill">
+        <div class="status-dot"></div>
+        <span id="statusTxt">Hazır</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div class="section-label">Mod</div>
+    <div class="mode-grid">
+      <button class="mode-btn active" data-mode="pdf" onclick="setMode(this)">
+        <span class="mode-icon">📄</span> PDF'lerim
+      </button>
+      <button class="mode-btn" data-mode="web" onclick="setMode(this)">
+        <span class="mode-icon">🌐</span> Gündem
+      </button>
+      <button class="mode-btn" data-mode="both" onclick="setMode(this)">
+        <span class="mode-icon">⚡</span> İkisi
+      </button>
+    </div>
+
+    <div class="section-label">Belgeler</div>
+    <div class="drop-zone" id="dropZone" onclick="document.getElementById('fileInput').click()">
+      <input type="file" id="fileInput" accept=".pdf,.xlsx,.xls,.csv" multiple onchange="handleFiles(this.files)">
+      <span class="drop-icon">↑</span>
+      <div class="drop-label"><strong>Tıkla</strong> veya sürükle bırak</div>
+      <div class="drop-types">PDF · XLSX · CSV</div>
+    </div>
+    <div class="file-list" id="fileList"></div>
+  </aside>
+
+  <!-- CHAT -->
+  <main class="chat">
+    <div class="messages" id="messages">
+      <div class="welcome" id="welcome">
+        <div class="welcome-title">Finans AI</div>
+        <div class="welcome-sub">API key'ini üstte gir, belgelerini yükle ve soru sor. Güncel haberler için Gündem modunu kullan.</div>
+        <div class="chips">
+          <div class="chip" onclick="quickSend(this)">Bu dönem vergi takvimi?</div>
+          <div class="chip" onclick="quickSend(this)">BIST100 son durum?</div>
+          <div class="chip" onclick="quickSend(this)">Belgeleri özetle</div>
+          <div class="chip" onclick="quickSend(this)">Enflasyon verileri?</div>
+        </div>
+      </div>
+    </div>
+    <div class="input-area">
+      <div class="input-wrap">
+        <textarea id="userInput" rows="1" placeholder="Sorunuzu yazın..."
+          onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendMsg()}"
+          oninput="this.style.height='auto';this.style.height=this.scrollHeight+'px'"></textarea>
+      </div>
+      <button class="send-btn" id="sendBtn" onclick="sendMsg()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<script>
+let mode = 'pdf';
+let files = [];
+let history = [];
+
+function setMode(btn) {
+  mode = btn.dataset.mode;
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+function getFileType(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (ext === 'pdf') return 'pdf';
+  if (['xlsx','xls'].includes(ext)) return 'xls';
+  if (ext === 'csv') return 'csv';
+  return null;
+}
+
+function handleFiles(fl) {
+  Array.from(fl).forEach(f => {
+    const type = getFileType(f.name);
+    if (!type || files.find(x => x.name === f.name)) return;
+    if (type === 'pdf') {
+      const r = new FileReader();
+      r.onload = e => { files.push({name:f.name,type:'pdf',data:e.target.result.split(',')[1]}); renderFiles(); };
+      r.readAsDataURL(f);
+    } else if (type === 'xls') {
+      const r = new FileReader();
+      r.onload = e => {
+        const wb = XLSX.read(e.target.result, {type:'binary'});
+        let txt = '';
+        wb.SheetNames.forEach(s => { txt += '## '+s+'\n'+XLSX.utils.sheet_to_csv(wb.Sheets[s])+'\n\n'; });
+        files.push({name:f.name,type:'xls',text:txt.slice(0,40000)});
+        renderFiles();
+      };
+      r.readAsBinaryString(f);
+    } else {
+      const r = new FileReader();
+      r.onload = e => { files.push({name:f.name,type:'csv',text:e.target.result.slice(0,40000)}); renderFiles(); };
+      r.readAsText(f, 'UTF-8');
+    }
+  });
+}
+
+function renderFiles() {
+  document.getElementById('fileList').innerHTML = files.map((f,i) => `
+    <div class="file-item">
+      <span class="file-tag ${f.type}">${f.type.toUpperCase()}</span>
+      <span class="file-nm" title="${f.name}">${f.name}</span>
+      <span class="file-rm" onclick="removeFile(${i})">✕</span>
+    </div>`).join('');
+  document.getElementById('statusTxt').textContent = files.length ? files.length+' dosya yüklendi' : 'Hazır';
+}
+
+function removeFile(i) { files.splice(i,1); renderFiles(); }
+
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e=>{e.preventDefault();dz.classList.add('over');});
+dz.addEventListener('dragleave', ()=>dz.classList.remove('over'));
+dz.addEventListener('drop', e=>{e.preventDefault();dz.classList.remove('over');handleFiles(e.dataTransfer.files);});
+
+function quickSend(el) { document.getElementById('userInput').value = el.textContent; sendMsg(); }
+
+function hideWelcome() { const w = document.getElementById('welcome'); if(w) w.remove(); }
+
+function addMsg(role, content, sources) {
+  hideWelcome();
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'msg ' + role;
+  const av = role === 'user' ? 'SEN' : 'AI';
+  let srcHtml = '';
+  if (sources && sources.length) {
+    srcHtml = '<div class="source-row">'+sources.map(s=>`<span class="src-badge ${s}">${s==='pdf'?'Belgeleriniz':'Web'}</span>`).join('')+'</div>';
+  }
+  d.innerHTML = `<div class="av">${av}</div><div class="bubble">${content}${srcHtml}</div>`;
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+  return d;
+}
+
+function addTyping() {
+  hideWelcome();
+  const msgs = document.getElementById('messages');
+  const d = document.createElement('div');
+  d.className = 'msg ai'; d.id = 'typing';
+  d.innerHTML = '<div class="av">AI</div><div class="bubble"><div class="typing"><span></span><span></span><span></span></div></div>';
+  msgs.appendChild(d);
+  msgs.scrollTop = msgs.scrollHeight;
+}
+function removeTyping() { const t=document.getElementById('typing'); if(t) t.remove(); }
+
+async function sendMsg() {
+  const input = document.getElementById('userInput');
+  const text = input.value.trim();
+  if (!text) return;
+  const apiKey = document.getElementById('apiKey').value.trim();
+  if (!apiKey) { addMsg('ai', 'Lütfen önce üstteki API key kutusuna anahtarınızı girin.'); return; }
+
+  document.getElementById('sendBtn').disabled = true;
+  input.value = ''; input.style.height = 'auto';
+  addMsg('user', text.replace(/\n/g,'<br>'));
+  history.push({role:'user', content: text});
+  addTyping();
+
+  try {
+    let sys = 'Sen Burak\'ın kişisel finans ve muhasebe asistanısın. Türkçe yanıt ver. Finans, muhasebe, vergi, yatırım konularında uzman yardımcısısın.';
+    let userContent = [];
+
+    if ((mode==='pdf'||mode==='both') && files.length > 0) {
+      sys += ' Yüklenen belgeleri analiz ederek yanıt ver.';
+      files.slice(0,5).forEach(f => {
+        if (f.type === 'pdf') {
+          userContent.push({type:'document', source:{type:'base64', media_type:'application/pdf', data:f.data}});
+        } else {
+          userContent.push({type:'text', text:`[${f.name} içeriği]:\n${f.text}`});
+        }
+      });
+    }
+    if (mode==='web'||mode==='both') {
+      sys += ' Güncel Türkiye finans haberleri, BIST, döviz, ekonomi için web araması yap.';
+    }
+    userContent.push({type:'text', text});
+
+    const msgs = history.length > 1
+      ? [...history.slice(0,-1), {role:'user', content: userContent}]
+      : [{role:'user', content: userContent}];
+
+    const body = {
+      apiKey,
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 2000,
+      system: sys,
+      messages: msgs
+    };
+    if (mode==='web'||mode==='both') body.tools = [{type:'web_search_20250305',name:'web_search'}];
+
+    const res = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    removeTyping();
+
+    if (data.error) { addMsg('ai', 'Hata: '+data.error.message); return; }
+    const answer = data.content.filter(b=>b.type==='text').map(b=>b.text).join('\n');
+    const hasWeb = data.content.some(b=>b.type==='tool_use'||b.type==='tool_result');
+    history.push({role:'assistant', content: answer});
+    const sources = [];
+    if (files.length && (mode==='pdf'||mode==='both')) sources.push('pdf');
+    if (hasWeb) sources.push('web');
+    addMsg('ai', answer.replace(/\n/g,'<br>'), sources);
+  } catch(e) {
+    removeTyping();
+    addMsg('ai', 'Bağlantı hatası: ' + e.message);
+  }
+  document.getElementById('sendBtn').disabled = false;
+  document.getElementById('userInput').focus();
+}
+</script>
+</body>
+</html>
