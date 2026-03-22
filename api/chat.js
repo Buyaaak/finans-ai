@@ -1,3 +1,11 @@
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '20mb',
+    },
+  },
+};
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -8,6 +16,11 @@ export default async function handler(req, res) {
 
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
+
+    if (!apiKey) {
+      return res.status(500).json({ error: { message: 'API key bulunamadı' } });
+    }
+
     const body = req.body;
 
     const response = await fetch('https://api.anthropic.com/v1/messages', {
